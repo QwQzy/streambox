@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StreamBox</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --border: #e2e5ea;
+      --border-soft: #f0f2f5;
+      --text: #24292f;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-soft: #eff6ff;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 14px; line-height: 1.5;
+      color: var(--text); background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font-family: inherit; }
+    .topbar {
+      height: 56px; display: flex; align-items: center; gap: 12px;
+      padding: 0 20px; background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 15px; font-weight: 600; letter-spacing: .2px;
+      cursor: pointer; user-select: none;
+    }
+    .brand:hover { opacity: .8; }
+    .brand .logo {
+      width: 26px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); color: #fff; border-radius: 7px;
+    }
+    .spacer { flex: 1; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 34px; padding: 0 14px;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: #fff; color: var(--text); font-size: 13px;
+      cursor: pointer; white-space: nowrap;
+      transition: background .15s, border-color .15s, box-shadow .15s;
+    }
+    .btn:hover { background: #f3f4f6; }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .btn:disabled:hover { background: #fff; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn-primary:disabled { background: var(--accent); }
+    .btn-block { width: 100%; height: 38px; }
+    .layout { display: flex; height: calc(100vh - 56px); }
+    .browser {
+      flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 16px 20px 40px;
+    }
+    .card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+    }
+    .toolbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 16px; border-bottom: 1px solid var(--border);
+      background: #fafbfc;
+    }
+    .breadcrumb {
+      flex: 1 1 auto; min-width: 0;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 1px;
+    }
+    .breadcrumb button {
+      border: 0; background: none; padding: 3px 6px; border-radius: 4px;
+      font-size: 13px; color: var(--accent); cursor: pointer;
+    }
+    .breadcrumb button:hover { background: var(--accent-soft); }
+    .breadcrumb .current { color: var(--text); font-weight: 500; cursor: default; }
+    .breadcrumb .current:hover { background: none; }
+    .breadcrumb .sep { color: #c4c9d0; font-size: 12px; user-select: none; }
+    .count { flex: none; font-size: 12px; color: var(--muted); }
+
+    /* 搜索框 */
+    .searchbox {
+      position: relative; flex: none; width: 220px;
+    }
+    .searchbox input {
+      width: 100%; height: 30px;
+      padding: 0 10px 0 28px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: 13px; font-family: inherit;
+      outline: none; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .searchbox input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+    }
+    .searchbox .search-icon {
+      position: absolute; left: 8px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted); pointer-events: none; display: flex;
+    }
+
+    .filelist { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .filelist th {
+      text-align: left; font-weight: 500; font-size: 12px; color: var(--muted);
+      padding: 9px 16px; border-bottom: 1px solid var(--border); background: #fafbfc;
+    }
+    .filelist td {
+      padding: 8px 16px; border-bottom: 1px solid var(--border-soft);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .filelist th:nth-child(2), .filelist td:nth-child(2) { width: 110px; }
+    .filelist th:nth-child(3), .filelist td:nth-child(3) { width: 180px; }
+    .filelist tbody tr { cursor: pointer; transition: background .1s; }
+    .filelist tbody tr:hover { background: #f8fafc; }
+    .filelist tbody tr.selected { background: var(--accent-soft); }
+    .filelist tbody tr.selected td { border-bottom-color: #dbeafe; }
+    .filelist tbody tr:last-child td { border-bottom: 0; }
+    .filelist td.muted { color: var(--muted); font-size: 13px; }
+    .name-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .name-cell .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ficon { flex: none; display: flex; align-items: center; }
+    .ficon.is-dir { color: #f0b429; }
+    .ficon.is-file { color: #9aa3af; }
+    .empty {
+      padding: 56px 16px; text-align: center; color: var(--muted); font-size: 13px;
+    }
+    .detail {
+      width: 320px; flex: none; display: flex; flex-direction: column;
+      background: var(--panel); border-left: 1px solid var(--border);
+      overflow-y: auto;
+    }
+    .detail-empty {
+      margin: auto; padding: 40px 28px;
+      text-align: center; color: var(--muted); font-size: 13px;
+    }
+    .detail-empty .big { display: block; margin-bottom: 10px; color: #d5d9df; }
+    .detail-head {
+      padding: 22px 18px 16px; text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .detail-icon { display: flex; justify-content: center; margin-bottom: 10px; color: #9aa3af; }
+    .detail-name {
+      font-size: 14px; font-weight: 600; line-height: 1.45; word-break: break-all;
+    }
+    .detail-path {
+      margin-top: 6px; font-size: 12px; color: var(--muted); word-break: break-all;
+    }
+    .spec {
+      display: grid; grid-template-columns: 68px 1fr;
+      gap: 11px 12px; margin: 0; padding: 16px 18px; font-size: 13px;
+    }
+    .spec dt { color: var(--muted); }
+    .spec dd { margin: 0; word-break: break-all; }
+    .detail-foot {
+      margin-top: auto; padding: 16px 18px;
+      border-top: 1px solid var(--border);
+    }
+    .detail-foot .row {
+      display: flex; gap: 8px;
+    }
+    .detail-foot .row + .row { margin-top: 8px; }
+    .detail-foot .row .btn { flex: 1; }
+    .toast {
+      position: fixed; left: 50%; bottom: 30px;
+      transform: translateX(-50%) translateY(10px);
+      background: #1f2937; color: #fff; font-size: 13px;
+      padding: 9px 16px; border-radius: 6px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+      opacity: 0; pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease; z-index: 99;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* 拖拽覆盖层 */
+    .drag-overlay {
+      position: fixed; inset: 0;
+      background: rgba(37, 99, 235, .10);
+      border: 3px dashed var(--accent);
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .drag-overlay[hidden] { display: none; }
+    .drag-overlay .drag-inner {
+      background: #fff;
+      padding: 26px 40px;
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(16, 24, 40, .18);
+      text-align: center; color: var(--accent);
+    }
+    .drag-overlay .drag-inner svg { margin-bottom: 8px; }
+    .drag-overlay .drag-text { font-size: 15px; font-weight: 600; }
+    .drag-overlay .drag-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* 上传面板 */
+    .upload-panel {
+      position: fixed; right: 20px; bottom: 20px;
+      width: 400px; max-width: calc(100vw - 40px);
+      max-height: 60vh;
+      display: flex; flex-direction: column;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 12px 36px rgba(16, 24, 40, .14);
+      z-index: 50;
+      overflow: hidden;
+      transition: opacity .15s;
+    }
+    .upload-panel[hidden] { display: none; }
+    .up-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: #fafbfc;
+    }
+    .up-title { flex: none; font-weight: 600; font-size: 13px; }
+    .up-count { flex: 1; font-size: 12px; color: var(--muted); }
+    .up-head .iconbtn {
+      width: 26px; height: 26px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid transparent; border-radius: 5px;
+      background: none; color: var(--muted);
+      cursor: pointer; font-size: 14px; line-height: 1;
+      transition: background .12s, color .12s;
+    }
+    .up-head .iconbtn:hover { background: #eef0f3; color: var(--text); }
+    .up-body { overflow-y: auto; padding: 4px 0; }
+    .upload-panel.collapsed .up-body { display: none; }
+
+    .up-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .up-item:last-child { border-bottom: 0; }
+    .up-line1 { display: flex; align-items: center; gap: 8px; }
+    .up-name {
+      flex: 1; min-width: 0;
+      font-size: 13px; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .up-name .up-icon { color: #9aa3af; margin-right: 6px; vertical-align: -2px; }
+    .up-btns { flex: none; display: flex; gap: 4px; }
+    .up-btn {
+      border: 1px solid var(--border); background: #fff;
+      padding: 2px 8px; border-radius: 4px;
+      font-size: 11px; cursor: pointer; color: var(--muted);
+      transition: background .12s, color .12s, border-color .12s;
+    }
+    .up-btn:hover { background: #f3f4f6; color: var(--text); }
+    .up-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .up-btn:hover:disabled { background: #fff; color: var(--muted); }
+
+    .up-bar {
+      margin: 7px 0 5px;
+      height: 4px; background: #eef0f3;
+      border-radius: 2px; overflow: hidden;
+    }
+    .up-fill {
+      height: 100%; width: 0%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width .18s ease;
+    }
+    .up-item.done     .up-fill { background: var(--success); }
+    .up-item.error    .up-fill { background: var(--danger); }
+    .up-item.canceled .up-fill { background: #9ca3af; }
+    .up-item.paused   .up-fill { background: #f59e0b; }
+    .up-item.canceled .up-name { text-decoration: line-through; color: var(--muted); }
+
+    .up-line2 {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .up-bytes  { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .up-speed  { flex: none; }
+    .up-status { flex: none; }
+    .up-item.error    .up-status { color: var(--danger); }
+    .up-item.done     .up-status { color: var(--success); }
+    .up-item.paused   .up-status { color: #f59e0b; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(16, 24, 40, .38);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+    .modal-backdrop[hidden] { display: none; }
+    .modal {
+      width: 360px; max-width: calc(100vw - 32px);
+      background: var(--panel);
+      border-radius: 10px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, .22);
+      overflow: hidden;
+    }
+    .modal-title { padding: 14px 18px 4px; font-size: 14px; font-weight: 600; }
+    .modal-body { padding: 6px 18px 16px; }
+    .modal-body input {
+      width: 100%; height: 36px; padding: 0 10px;
+      border: 1px solid var(--border); border-radius: 6px;
+      font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .modal-body input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
+    }
+    .modal-foot {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      background: #fafbfc;
+    }
+
+    @media (max-width: 760px) {
+      .layout { flex-direction: column; height: auto; }
+      .browser { overflow: visible; padding: 12px; }
+      .detail {
+        width: 100%; border-left: 0; border-top: 1px solid var(--border);
+        min-height: 260px;
+      }
+      .filelist th:nth-child(3), .filelist td:nth-child(3) { display: none; }
+      .filelist th:nth-child(2), .filelist td:nth-child(2) { width: 84px; }
+      .upload-panel { right: 10px; left: 10px; width: auto; bottom: 10px; }
+      .searchbox { width: 140px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand" id="brandHome" title="回到根目录（~）">
+    <span class="logo">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 5 17 10"/>
+        <line x1="12" y1="5" x2="12" y2="19"/>
+      </svg>
+    </span>
+    StreamBox
+  </div>
+
+  <div class="spacer"></div>
+
+  <input type="file" id="fileInput" multiple hidden>
+
+  <button class="btn" id="mkdirBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+      <line x1="12" y1="11" x2="12" y2="17"/>
+      <line x1="9" y1="14" x2="15" y2="14"/>
+    </svg>
+    新建目录
+  </button>
+
+  <button class="btn btn-primary" id="uploadBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    上传文件
+  </button>
+</header>
+
+<div class="layout">
+  <section class="browser">
+    <div class="card">
+      <div class="toolbar">
+        <nav class="breadcrumb" id="breadcrumb"></nav>
+        <div class="searchbox">
+          <span class="search-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </span>
+          <input type="text" id="searchInput" placeholder="搜索当前目录（/）" autocomplete="off">
+        </div>
+        <span class="count" id="count"></span>
+      </div>
+
+      <table class="filelist" id="fileTable">
+        <thead>
+        <tr>
+          <th>名称</th>
+          <th>大小</th>
+          <th>修改时间</th>
+        </tr>
+        </thead>
+        <tbody id="fileBody"></tbody>
+      </table>
+
+      <div class="empty" id="empty" hidden>这个目录是空的</div>
+    </div>
+  </section>
+
+  <aside class="detail" id="detail"></aside>
+</div>
+
+<!-- 拖拽覆盖层 -->
+<div class="drag-overlay" id="dragOverlay" hidden>
+  <div class="drag-inner">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    <div class="drag-text">松手上传到当前目录</div>
+    <div class="drag-sub" id="dragSub"></div>
+  </div>
+</div>
+
+<!-- 上传面板 -->
+<div class="upload-panel" id="uploadPanel" hidden>
+  <div class="up-head">
+    <span class="up-title">上传列表</span>
+    <span class="up-count" id="uploadPanelCount"></span>
+    <button class="iconbtn" id="uploadPanelToggle" title="折叠">▾</button>
+    <button class="iconbtn" id="uploadPanelClear" title="清除已完成">✕</button>
+  </div>
+  <div class="up-body" id="uploadPanelBody"></div>
+</div>
+
+<!-- 通用输入 Modal -->
+<div class="modal-backdrop" id="promptModal" hidden>
+  <div class="modal">
+    <div class="modal-title" id="promptTitle">标题</div>
+    <div class="modal-body">
+      <input type="text" id="promptInput" autocomplete="off">
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="promptCancel">取消</button>
+      <button class="btn btn-primary" id="promptConfirm">确定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    'use strict';
+
+    /* =========================================================
+     * 1. 图标
+     * ========================================================= */
+    const ICON_FOLDER =
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+    const ICON_FILE =
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+            '<polyline points="14 2 14 8 20 8"/></svg>';
+    const ICON_FILE_BIG =
+            '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+            '<polyline points="14 2 14 8 20 8"/></svg>';
+    const ICON_EMPTY =
+            '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+    const ICON_DOWNLOAD =
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+            '<polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+    const ICON_FILE_SMALL =
+            '<svg class="up-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" ' +
+            'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+            '<polyline points="14 2 14 8 20 8"/></svg>';
+
+    /* =========================================================
+     * 2. 工具
+     * ========================================================= */
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function fmtSize(bytes) {
+      if (bytes == null || isNaN(bytes)) return '—';
+      if (bytes < 1024) return bytes + ' B';
+      const units = ['KB', 'MB', 'GB', 'TB', 'PB'];
+      let n = bytes / 1024, i = 0;
+      while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+      const digits = n >= 100 ? 0 : n >= 10 ? 1 : 2;
+      return n.toFixed(digits) + ' ' + units[i];
+    }
+    function fmtSpeed(bps) {
+      if (!bps || bps <= 0) return '';
+      return fmtSize(bps) + '/s';
+    }
+    const MIME = {
+      mp4: 'video/mp4', mkv: 'video/x-matroska', mov: 'video/quicktime', webm: 'video/webm',
+      avi: 'video/x-msvideo', m4v: 'video/x-m4v',
+      mp3: 'audio/mpeg', flac: 'audio/flac', wav: 'audio/wav', m4a: 'audio/mp4', aac: 'audio/aac',
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+      webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
+      pdf: 'application/pdf', zip: 'application/zip', gz: 'application/gzip',
+      tar: 'application/x-tar', rar: 'application/vnd.rar', '7z': 'application/x-7z-compressed',
+      md: 'text/markdown', txt: 'text/plain', json: 'application/json', csv: 'text/csv',
+      xml: 'application/xml', html: 'text/html', css: 'text/css', js: 'text/javascript',
+      go: 'text/x-go', py: 'text/x-python', sh: 'application/x-sh'
+    };
+    function mimeOf(node) {
+      const idx = node.name.lastIndexOf('.');
+      if (idx < 0) return 'application/octet-stream';
+      return MIME[node.name.slice(idx + 1).toLowerCase()] || 'application/octet-stream';
+    }
+
+    let toastTimer = null;
+    function toast(msg) {
+      let el = document.querySelector('.toast');
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'toast';
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      void el.offsetWidth;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 1900);
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    /* =========================================================
+     * 3. 状态 & DOM
+     * ========================================================= */
+    const state = {
+      cwd: [],
+      items: [],
+      selectedNames: new Set(),   // 多选：当前目录中选中的文件名
+      lastClickedName: null,      // Shift 范围选的锚点
+      query: '',                  // 搜索过滤
+      loading: false,
+    };
+
+    const fileBody     = document.getElementById('fileBody');
+    const fileTable    = document.getElementById('fileTable');
+    const breadcrumbEl = document.getElementById('breadcrumb');
+    const detailEl     = document.getElementById('detail');
+    const emptyEl      = document.getElementById('empty');
+    const countEl      = document.getElementById('count');
+    const fileInput    = document.getElementById('fileInput');
+    const uploadBtn    = document.getElementById('uploadBtn');
+    const searchInput  = document.getElementById('searchInput');
+
+    const panelEl      = document.getElementById('uploadPanel');
+    const panelBody    = document.getElementById('uploadPanelBody');
+    const panelCount   = document.getElementById('uploadPanelCount');
+    const panelToggle  = document.getElementById('uploadPanelToggle');
+    const panelClear   = document.getElementById('uploadPanelClear');
+
+    const mkdirBtn     = document.getElementById('mkdirBtn');
+    const brandHome    = document.getElementById('brandHome');
+
+    const dragOverlay  = document.getElementById('dragOverlay');
+    const dragSub      = document.getElementById('dragSub');
+
+    const promptModal   = document.getElementById('promptModal');
+    const promptTitle   = document.getElementById('promptTitle');
+    const promptInput   = document.getElementById('promptInput');
+    const promptCancel  = document.getElementById('promptCancel');
+    const promptConfirm = document.getElementById('promptConfirm');
+
+    /* =========================================================
+     * 4. 路径
+     * ========================================================= */
+    function relPathOf(node) { return state.cwd.concat(node.name).join('/'); }
+    function displayPath(node) { return '/' + relPathOf(node); }
+    function currentRel() { return state.cwd.join('/'); }
+
+    /* =========================================================
+     * 5. 上传 memo（断点续传）
+     * ========================================================= */
+    function memoKey(relPath) { return 'streambox:upload:' + relPath; }
+    function readMemo(relPath) {
+      try {
+        const s = localStorage.getItem(memoKey(relPath));
+        return s ? JSON.parse(s) : null;
+      } catch (_) { return null; }
+    }
+    function writeMemo(relPath, data) {
+      try { localStorage.setItem(memoKey(relPath), JSON.stringify(data)); } catch (_) {}
+    }
+    function clearMemo(relPath) {
+      try { localStorage.removeItem(memoKey(relPath)); } catch (_) {}
+    }
+
+    /* =========================================================
+     * 6. API
+     * ========================================================= */
+    async function apiList(relPath) {
+      const res = await fetch('/api/list?path=' + encodeURIComponent(relPath || ''));
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        throw new Error('list failed: ' + res.status + ' ' + txt);
+      }
+      return res.json();
+    }
+
+    async function probeUploadOffset(relPath) {
+      const res = await fetch('/api/upload?path=' + encodeURIComponent(relPath), {
+        method: 'HEAD',
+      });
+      if (res.status === 404) return -1;
+      if (!res.ok) throw new Error('probe failed: ' + res.status);
+      const v = res.headers.get('X-Upload-Offset');
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 0 ? n : -1;
+    }
+
+    async function apiMkdir(dirRel, name) {
+      const res = await fetch(
+              '/api/mkdir?path=' + encodeURIComponent(dirRel || '') +
+              '&name=' + encodeURIComponent(name),
+              { method: 'POST' }
+      );
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        throw new Error(res.status + ' ' + txt);
+      }
+      return res.json();
+    }
+
+    async function apiRename(oldRel, newName) {
+      const res = await fetch(
+              '/api/rename?path=' + encodeURIComponent(oldRel) +
+              '&name=' + encodeURIComponent(newName),
+              { method: 'POST' }
+      );
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        throw new Error(res.status + ' ' + txt);
+      }
+      return res.json();
+    }
+
+    /* =========================================================
+     * 7. 通用输入 Modal
+     * ========================================================= */
+    let promptResolve = null;
+
+    function openPrompt(title, defaultValue, confirmText) {
+      return new Promise((resolve) => {
+        promptResolve = resolve;
+        promptTitle.textContent = title;
+        promptInput.value = defaultValue || '';
+        promptConfirm.textContent = confirmText || '确定';
+        promptModal.hidden = false;
+        requestAnimationFrame(() => {
+          promptInput.focus();
+          promptInput.select();
+        });
+      });
+    }
+    function closePrompt(value) {
+      promptModal.hidden = true;
+      if (promptResolve) {
+        const r = promptResolve;
+        promptResolve = null;
+        r(value);
+      }
+    }
+    function submitPrompt() {
+      const v = promptInput.value.trim();
+      if (!v) { promptInput.focus(); return; }
+      closePrompt(v);
+    }
+
+    promptCancel.addEventListener('click', () => closePrompt(null));
+    promptConfirm.addEventListener('click', submitPrompt);
+    promptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submitPrompt(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closePrompt(null); }
+    });
+    promptModal.addEventListener('click', (e) => {
+      if (e.target === promptModal) closePrompt(null);
+    });
+
+    /* =========================================================
+     * 8. 上传任务 + 并发队列
+     * ========================================================= */
+    const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
+    const MAX_CONCURRENT = 3;           // 同时最多 3 个上传
+
+    let nextTaskId = 0;
+    const tasks = []; // 全部任务，含已完成
+
+    // 并发队列：同时最多跑 MAX_CONCURRENT 个任务
+    const uploadQueue = {
+      running: 0,
+      queue: [],
+      add(task) {
+        this.queue.push(task);
+        this.pump();
+      },
+      pump() {
+        while (this.running < MAX_CONCURRENT && this.queue.length > 0) {
+          const t = this.queue.shift();
+          if (t.status !== 'pending') continue; // 被取消/暂停的跳过
+          this.running++;
+          this._run(t);
+        }
+      },
+      async _run(t) {
+        try { await t.run(); }
+        catch (_) {}
+        this.running--;
+        this.pump();
+      },
+    };
+
+    class UploadTask {
+      constructor(file, dirRel) {
+        this.id = ++nextTaskId;
+        this.file = file;
+        this.dirRel = dirRel;
+        this.relPath = dirRel ? dirRel + '/' + file.name : file.name;
+        this.url = '/api/upload?path=' + encodeURIComponent(this.relPath);
+        this.total = file.size;
+        this.offset = 0;
+        this.loaded = 0;
+        this.status = 'pending';
+        this.speed = 0;
+        this.error = null;
+        this.xhr = null;
+
+        this.probed = false;
+        this.resumedFrom = 0;
+
+        this.lastSampleAt = 0;
+        this.lastSampleBytes = 0;
+
+        this.el = null;
+        this.els = null;
+      }
+
+      get bytes() { return Math.min(this.offset + this.loaded, this.total); }
+
+      mount(parent) {
+        const el = document.createElement('div');
+        el.className = 'up-item';
+        el.dataset.id = String(this.id);
+        el.innerHTML =
+                '<div class="up-line1">' +
+                '<div class="up-name">' + ICON_FILE_SMALL + esc(this.file.name) + '</div>' +
+                '<div class="up-btns">' +
+                '<button class="up-btn up-toggle">暂停</button>' +
+                '<button class="up-btn up-cancel">取消</button>' +
+                '</div>' +
+                '</div>' +
+                '<div class="up-bar"><div class="up-fill"></div></div>' +
+                '<div class="up-line2">' +
+                '<span class="up-bytes"></span>' +
+                '<span class="up-speed"></span>' +
+                '<span class="up-status"></span>' +
+                '</div>';
+
+        this.el = el;
+        this.els = {
+          fill:   el.querySelector('.up-fill'),
+          bytes:  el.querySelector('.up-bytes'),
+          speed:  el.querySelector('.up-speed'),
+          status: el.querySelector('.up-status'),
+          toggle: el.querySelector('.up-toggle'),
+          cancel: el.querySelector('.up-cancel'),
+        };
+
+        this.els.toggle.addEventListener('click', () => {
+          if (this.status === 'uploading') this.pause();
+          else if (this.status === 'paused') this.resume();
+        });
+        this.els.cancel.addEventListener('click', () => this.cancel());
+
+        parent.appendChild(el);
+        this.updateUI();
+      }
+
+      updateUI() {
+        if (!this.el) return;
+        const pct = this.total > 0
+                ? Math.min(100, (this.bytes / this.total) * 100)
+                : (this.status === 'done' ? 100 : 0);
+
+        this.el.classList.toggle('done',     this.status === 'done');
+        this.el.classList.toggle('error',    this.status === 'error');
+        this.el.classList.toggle('canceled', this.status === 'canceled');
+        this.el.classList.toggle('paused',   this.status === 'paused');
+
+        this.els.fill.style.width = pct.toFixed(2) + '%';
+
+        const suffix = (this.resumedFrom > 0 && this.status === 'uploading')
+                ? ' · 续传自 ' + fmtSize(this.resumedFrom)
+                : '';
+        this.els.bytes.textContent =
+                fmtSize(this.bytes) + ' / ' + fmtSize(this.total) + suffix;
+
+        if (this.status === 'uploading') {
+          this.els.speed.textContent = fmtSpeed(this.speed);
+        } else {
+          this.els.speed.textContent = '';
+        }
+
+        const statusText = {
+          pending:   '等待中',
+          uploading: '',
+          paused:    '已暂停',
+          done:      '完成',
+          error:     '失败',
+          canceled:  '已取消',
+        }[this.status] || '';
+        this.els.status.textContent = statusText;
+
+        const t = this.els.toggle, c = this.els.cancel;
+        if (this.status === 'uploading') {
+          t.textContent = '暂停'; t.disabled = false;
+          c.disabled = false;
+        } else if (this.status === 'paused') {
+          t.textContent = '继续'; t.disabled = false;
+          c.disabled = false;
+        } else if (this.status === 'pending') {
+          t.textContent = '暂停'; t.disabled = true;
+          c.disabled = false;
+        } else {
+          t.disabled = true;
+          c.disabled = true;
+        }
+      }
+
+      async run() {
+        if (this.status !== 'pending' && this.status !== 'paused') return;
+
+        this.status = 'uploading';
+        this.lastSampleAt = Date.now();
+        this.lastSampleBytes = this.bytes;
+        this.updateUI();
+        refreshPanelCount();
+
+        try {
+          if (!this.probed) {
+            this.probed = true;
+            await this._probeOnce();
+          }
+
+          if (this.total === 0) {
+            await this._putEmpty();
+            this.status = 'done';
+            this.speed = 0;
+            clearMemo(this.relPath);
+            this.updateUI();
+            refreshPanelCount();
+            return;
+          }
+
+          this._saveMemo();
+
+          while (this.offset < this.total) {
+            if (this.status !== 'uploading') return;
+
+            const start = this.offset;
+            const end = Math.min(start + CHUNK_SIZE, this.total);
+            const chunk = this.file.slice(start, end);
+
+            const info = await this._putChunk(chunk, start, end);
+            this.offset = (typeof info.offset === 'number') ? info.offset : end;
+            this.loaded = 0;
+            this._saveMemo();
+            this.updateUI();
+
+            if (info.done) {
+              this.status = 'done';
+              this.speed = 0;
+              clearMemo(this.relPath);
+              this.updateUI();
+              refreshPanelCount();
+              return;
+            }
+          }
+
+          this.status = 'done';
+          this.speed = 0;
+          clearMemo(this.relPath);
+          this.updateUI();
+          refreshPanelCount();
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+          this.status = 'error';
+          this.error = err.message || String(err);
+          this.speed = 0;
+          this.updateUI();
+          refreshPanelCount();
+        } finally {
+          this.xhr = null;
+        }
+      }
+
+      // 只对比 size + mtime，以服务端返回的 offset 为准
+      async _probeOnce() {
+        let serverOffset;
+        try {
+          serverOffset = await probeUploadOffset(this.relPath);
+        } catch (_) {
+          return;
+        }
+        if (serverOffset <= 0 || serverOffset >= this.total) return;
+
+        const memo = readMemo(this.relPath);
+        const sameFile =
+                memo &&
+                memo.size  === this.total &&
+                memo.mtime === this.file.lastModified;
+
+        if (sameFile) {
+          this.offset = serverOffset;
+          this.resumedFrom = serverOffset;
+          this.loaded = 0;
+          this.updateUI();
+          toast('从 ' + fmtSize(serverOffset) + ' 处续传：' + this.file.name);
+        }
+      }
+
+      _saveMemo() {
+        writeMemo(this.relPath, {
+          size:  this.total,
+          mtime: this.file.lastModified,
+          offset: this.offset,
+        });
+      }
+
+      _putEmpty() {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          this.xhr = xhr;
+          xhr.open('PUT', this.url, true);
+          xhr.setRequestHeader('Content-Range', 'bytes 0-0/0');
+          xhr.onload = () => {
+            this.xhr = null;
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else reject(new Error('HTTP ' + xhr.status + ' ' + xhr.responseText));
+          };
+          xhr.onerror = () => { this.xhr = null; reject(new Error('network error')); };
+          xhr.onabort = () => {
+            this.xhr = null;
+            const e = new Error('aborted'); e.name = 'AbortError'; reject(e);
+          };
+          xhr.send();
+        });
+      }
+
+      _putChunk(chunk, start, end) {
+        return new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          this.xhr = xhr;
+
+          xhr.open('PUT', this.url, true);
+          xhr.setRequestHeader('Content-Range',
+                  'bytes ' + start + '-' + (end - 1) + '/' + this.total);
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              this.loaded = e.loaded;
+              this.updateUI();
+            }
+          };
+
+          xhr.onload = () => {
+            this.xhr = null;
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try { resolve(JSON.parse(xhr.responseText || '{}')); }
+              catch (_) { reject(new Error('invalid JSON response')); }
+            } else {
+              reject(new Error('HTTP ' + xhr.status + ' ' + (xhr.responseText || '')));
+            }
+          };
+          xhr.onerror = () => {
+            this.xhr = null;
+            reject(new Error('network error'));
+          };
+          xhr.onabort = () => {
+            this.xhr = null;
+            const e = new Error('aborted'); e.name = 'AbortError'; reject(e);
+          };
+
+          xhr.send(chunk);
+        });
+      }
+
+      pause() {
+        if (this.status !== 'uploading' && this.status !== 'pending') return;
+        this.status = 'paused';
+        this.speed = 0;
+        this.loaded = 0;
+        if (this.xhr) { try { this.xhr.abort(); } catch (_) {} }
+        this.updateUI();
+        refreshPanelCount();
+      }
+
+      resume() {
+        if (this.status !== 'paused') return;
+        this.status = 'pending';
+        this.updateUI();
+        uploadQueue.add(this);
+      }
+
+      cancel() {
+        if (this.status === 'done' || this.status === 'canceled') return;
+        this.status = 'canceled';
+        this.speed = 0;
+        this.loaded = 0;
+        if (this.xhr) { try { this.xhr.abort(); } catch (_) {} }
+        this.updateUI();
+        refreshPanelCount();
+      }
+    }
+
+    /* =========================================================
+     * 9. 上传面板
+     * ========================================================= */
+    function showPanel() { panelEl.hidden = false; }
+
+    function refreshPanelCount() {
+      const active = tasks.filter(t =>
+              t.status === 'uploading' || t.status === 'paused' || t.status === 'pending'
+      ).length;
+      const done = tasks.filter(t => t.status === 'done').length;
+      const err = tasks.filter(t => t.status === 'error').length;
+
+      let text = active > 0 ? active + ' 进行中' : '已完成';
+      const extra = [];
+      if (done) extra.push(done + ' 成功');
+      if (err)  extra.push(err + ' 失败');
+      if (extra.length) text += ' · ' + extra.join(' · ');
+
+      panelCount.textContent = text;
+    }
+
+    panelToggle.addEventListener('click', () => {
+      panelEl.classList.toggle('collapsed');
+      panelToggle.textContent = panelEl.classList.contains('collapsed') ? '▸' : '▾';
+    });
+
+    panelClear.addEventListener('click', () => {
+      for (let i = tasks.length - 1; i >= 0; i--) {
+        const t = tasks[i];
+        if (t.status === 'done' || t.status === 'error' || t.status === 'canceled') {
+          if (t.el && t.el.parentNode) t.el.parentNode.removeChild(t.el);
+          tasks.splice(i, 1);
+        }
+      }
+      if (!tasks.length) panelEl.hidden = true;
+      refreshPanelCount();
+    });
+
+    /* =========================================================
+     * 10. 全局速度采样
+     * ========================================================= */
+    setInterval(function tickSpeed() {
+      const now = Date.now();
+      for (let i = 0; i < tasks.length; i++) {
+        const t = tasks[i];
+        if (t.status !== 'uploading') continue;
+
+        const dt = (now - t.lastSampleAt) / 1000;
+        if (dt < 0.3) continue;
+
+        const dBytes = t.bytes - t.lastSampleBytes;
+        const instant = dBytes / dt;
+        t.speed = t.speed > 0 ? (t.speed * 0.4 + instant * 0.6) : instant;
+        if (t.speed < 0) t.speed = 0;
+
+        t.lastSampleAt = now;
+        t.lastSampleBytes = t.bytes;
+        t.updateUI();
+      }
+    }, 500);
+
+    /* =========================================================
+     * 11. 文件选择 / 拖拽上传
+     * ========================================================= */
+    uploadBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+      const files = Array.from(fileInput.files || []);
+      fileInput.value = '';
+      if (files.length) handleFilesSelected(files);
+    });
+
+    function handleFilesSelected(files) {
+      const dirRel = currentRel();
+
+      showPanel();
+      panelEl.classList.remove('collapsed');
+      panelToggle.textContent = '▾';
+
+      const started = [];
+      files.forEach(f => {
+        const task = new UploadTask(f, dirRel);
+        tasks.push(task);
+        task.mount(panelBody);
+        uploadQueue.add(task);
+        started.push(task);
+      });
+
+      refreshPanelCount();
+
+      Promise.all(started.map(waitTaskEnd)).then(() => loadDir());
+    }
+
+    function waitTaskEnd(task) {
+      return new Promise(resolve => {
+        (function loop() {
+          if (task.status === 'done' || task.status === 'error' || task.status === 'canceled') {
+            resolve();
+          } else {
+            setTimeout(loop, 300);
+          }
+        })();
+      });
+    }
+
+    // 拖拽
+    let dragCounter = 0;
+    document.addEventListener('dragenter', (e) => {
+      if (!e.dataTransfer || !e.dataTransfer.types || !e.dataTransfer.types.includes('Files')) return;
+      e.preventDefault();
+      dragCounter++;
+      dragSub.textContent = '目标：' + (currentRel() ? '/' + currentRel() : '/');
+      dragOverlay.hidden = false;
+    });
+    document.addEventListener('dragover', (e) => {
+      if (e.dataTransfer && e.dataTransfer.types && e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+      }
+    });
+    document.addEventListener('dragleave', () => {
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        dragOverlay.hidden = true;
+      }
+    });
+    document.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragCounter = 0;
+      dragOverlay.hidden = true;
+      if (!e.dataTransfer) return;
+      const files = Array.from(e.dataTransfer.files || []);
+      if (files.length) handleFilesSelected(files);
+    });
+
+    /* =========================================================
+     * 12. 新建目录 / 重命名
+     * ========================================================= */
+    mkdirBtn.addEventListener('click', async () => {
+      if (state.loading) return;
+      const name = await openPrompt('新建目录', '', '创建');
+      if (!name) return;
+      try {
+        await apiMkdir(currentRel(), name);
+        toast('已创建目录：' + name);
+        loadDir();
+      } catch (err) {
+        toast('创建失败：' + err.message);
+      }
+    });
+
+    async function renameFile(node) {
+      const newName = await openPrompt(
+              '重命名', node.name, '重命名'
+      );
+      if (!newName || newName === node.name) return;
+      try {
+        await apiRename(relPathOf(node), newName);
+        toast('已重命名为：' + newName);
+        // 选中状态转移到新名字上
+        state.selectedNames.clear();
+        state.selectedNames.add(newName);
+        state.lastClickedName = newName;
+        loadDir();
+      } catch (err) {
+        toast('重命名失败：' + err.message);
+      }
+    }
+
+    /* =========================================================
+     * 13. 可见列表 / 选中项
+     * ========================================================= */
+    function getVisibleItems() {
+      let items = (state.items || []).slice();
+      if (state.query) {
+        const q = state.query;
+        items = items.filter(x => x.name.toLowerCase().includes(q));
+      }
+      items.sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+        return a.name.localeCompare(b.name, 'zh-Hans-CN', { numeric: true });
+      });
+      return items;
+    }
+
+    function getSelectedItems() {
+      return state.items.filter(x =>
+              x.type === 'file' && state.selectedNames.has(x.name)
+      );
+    }
+
+    /* =========================================================
+     * 14. 渲染
+     * ========================================================= */
+    function render() {
+      renderBreadcrumb();
+      renderList();
+      renderDetail();
+    }
+
+    function renderBreadcrumb() {
+      breadcrumbEl.innerHTML = '';
+
+      const parts = [{ label: '全部文件', index: -1 }];
+      state.cwd.forEach((seg, i) => parts.push({ label: seg, index: i }));
+
+      parts.forEach((p, i) => {
+        if (i > 0) {
+          const sep = document.createElement('span');
+          sep.className = 'sep';
+          sep.textContent = '/';
+          breadcrumbEl.appendChild(sep);
+        }
+
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.textContent = p.label;
+
+        if (i === parts.length - 1) {
+          el.className = 'current';
+        } else {
+          el.addEventListener('click', () => {
+            if (state.loading) return;
+            state.cwd = state.cwd.slice(0, p.index + 1);
+            state.selectedNames.clear();
+            state.lastClickedName = null;
+            loadDir();
+          });
+        }
+        breadcrumbEl.appendChild(el);
+      });
+    }
+
+    function renderList() {
+      const children = getVisibleItems();
+
+      fileBody.innerHTML = '';
+
+      if (!children.length) {
+        fileTable.hidden = true;
+        emptyEl.hidden = false;
+        if (state.loading) {
+          countEl.textContent = '加载中…';
+        } else if (state.query) {
+          countEl.textContent = '无匹配';
+        } else {
+          countEl.textContent = '';
+        }
+        return;
+      }
+
+      fileTable.hidden = false;
+      emptyEl.hidden = true;
+      countEl.textContent = children.length + ' 项';
+
+      const frag = document.createDocumentFragment();
+
+      children.forEach(node => {
+        const tr = document.createElement('tr');
+        if (node.type === 'file' && state.selectedNames.has(node.name)) {
+          tr.classList.add('selected');
+        }
+
+        const tdName = document.createElement('td');
+        const cell = document.createElement('div');
+        cell.className = 'name-cell';
+
+        const ic = document.createElement('span');
+        ic.className = 'ficon ' + (node.type === 'dir' ? 'is-dir' : 'is-file');
+        ic.innerHTML = node.type === 'dir' ? ICON_FOLDER : ICON_FILE;
+
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = node.name;
+
+        cell.appendChild(ic);
+        cell.appendChild(label);
+        tdName.appendChild(cell);
+
+        const tdSize = document.createElement('td');
+        tdSize.className = 'muted';
+        tdSize.textContent = node.type === 'dir' ? '—' : fmtSize(node.size);
+
+        const tdTime = document.createElement('td');
+        tdTime.className = 'muted';
+        tdTime.textContent = node.mtime || '—';
+
+        tr.appendChild(tdName);
+        tr.appendChild(tdSize);
+        tr.appendChild(tdTime);
+
+        tr.addEventListener('click', (e) => onRowClick(node, e));
+        frag.appendChild(tr);
+      });
+
+      fileBody.appendChild(frag);
+    }
+
+    function renderDetail() {
+      const selected = getSelectedItems();
+
+      if (selected.length === 0) {
+        detailEl.innerHTML =
+                '<div class="detail-empty">' +
+                '<span class="big">' + ICON_EMPTY + '</span>' +
+                '选择一个文件查看详情' +
+                '</div>';
+        return;
+      }
+
+      if (selected.length === 1) {
+        const node = selected[0];
+        const p = displayPath(node);
+        detailEl.innerHTML =
+                '<div class="detail-head">' +
+                '<div class="detail-icon">' + ICON_FILE_BIG + '</div>' +
+                '<div class="detail-name">' + esc(node.name) + '</div>' +
+                '<div class="detail-path">' + esc(p) + '</div>' +
+                '</div>' +
+                '<dl class="spec">' +
+                '<dt>类型</dt><dd>' + esc(mimeOf(node)) + '</dd>' +
+                '<dt>大小</dt><dd>' + esc(fmtSize(node.size)) + '</dd>' +
+                '<dt>修改时间</dt><dd>' + esc(node.mtime || '—') + '</dd>' +
+                '<dt>路径</dt><dd>' + esc(p) + '</dd>' +
+                '</dl>' +
+                '<div class="detail-foot">' +
+                '<div class="row">' +
+                '<button class="btn btn-primary" id="downloadBtn">' + ICON_DOWNLOAD + ' 下载</button>' +
+                '<button class="btn" id="renameBtn">重命名</button>' +
+                '</div>' +
+                '</div>';
+        detailEl.querySelector('#downloadBtn')
+                .addEventListener('click', () => downloadFile(node));
+        detailEl.querySelector('#renameBtn')
+                .addEventListener('click', () => renameFile(node));
+        return;
+      }
+
+      // 多选
+      const totalSize = selected.reduce((s, n) => s + (n.size || 0), 0);
+      detailEl.innerHTML =
+              '<div class="detail-head">' +
+              '<div class="detail-icon">' + ICON_FILE_BIG + '</div>' +
+              '<div class="detail-name">已选 ' + selected.length + ' 个文件</div>' +
+              '<div class="detail-path">共 ' + esc(fmtSize(totalSize)) + '</div>' +
+              '</div>' +
+              '<div class="detail-foot">' +
+              '<div class="row">' +
+              '<button class="btn btn-primary" id="bulkDownloadBtn">' +
+              ICON_DOWNLOAD + ' 全部下载</button>' +
+              '</div>' +
+              '</div>';
+      detailEl.querySelector('#bulkDownloadBtn')
+              .addEventListener('click', () => downloadMany(selected));
+    }
+
+    /* =========================================================
+     * 15. 加载 / 点击 / 下载
+     * ========================================================= */
+    async function loadDir() {
+      state.loading = true;
+      renderBreadcrumb();
+      countEl.textContent = '加载中…';
+
+      try {
+        const data = await apiList(currentRel());
+        state.items = Array.isArray(data.items) ? data.items : [];
+        // 清理已不存在的选中项
+        const names = new Set(state.items.map(x => x.name));
+        for (const n of Array.from(state.selectedNames)) {
+          if (!names.has(n)) state.selectedNames.delete(n);
+        }
+      } catch (err) {
+        console.error(err);
+        state.items = [];
+        toast('目录加载失败：' + err.message);
+      } finally {
+        state.loading = false;
+        render();
+      }
+    }
+
+    function onRowClick(node, e) {
+      if (state.loading) return;
+
+      const isMulti = e && (e.ctrlKey || e.metaKey);
+      const isRange = e && e.shiftKey;
+
+      // 目录：无修饰键时进入；有修饰键时忽略（避免误进）
+      if (node.type === 'dir') {
+        if (!isMulti && !isRange) {
+          state.cwd = state.cwd.concat(node.name);
+          state.selectedNames.clear();
+          state.lastClickedName = null;
+          state.query = '';
+          searchInput.value = '';
+          loadDir();
+        }
+        return;
+      }
+
+      // 文件：多选逻辑
+      if (isRange && state.lastClickedName) {
+        const visibleFiles = getVisibleItems().filter(x => x.type === 'file');
+        const names = visibleFiles.map(x => x.name);
+        const a = names.indexOf(state.lastClickedName);
+        const b = names.indexOf(node.name);
+        if (a >= 0 && b >= 0) {
+          const lo = Math.min(a, b), hi = Math.max(a, b);
+          for (let i = lo; i <= hi; i++) state.selectedNames.add(names[i]);
+        }
+      } else if (isMulti) {
+        if (state.selectedNames.has(node.name)) state.selectedNames.delete(node.name);
+        else state.selectedNames.add(node.name);
+        state.lastClickedName = node.name;
+      } else {
+        state.selectedNames.clear();
+        state.selectedNames.add(node.name);
+        state.lastClickedName = node.name;
+      }
+
+      renderList();
+      renderDetail();
+    }
+
+    function downloadFile(node) {
+      const p = relPathOf(node);
+      const a = document.createElement('a');
+      a.href = '/api/download?path=' + encodeURIComponent(p);
+      a.download = node.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast('开始下载：' + node.name);
+    }
+
+    async function downloadMany(nodes) {
+      toast('开始下载 ' + nodes.length + ' 个文件');
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const p = relPathOf(node);
+        const a = document.createElement('a');
+        a.href = '/api/download?path=' + encodeURIComponent(p);
+        a.download = node.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // 间隔一下，避免被浏览器拦截多文件下载
+        if (i < nodes.length - 1) await sleep(300);
+      }
+    }
+
+    /* =========================================================
+     * 16. 搜索 / 键盘快捷键
+     * ========================================================= */
+    searchInput.addEventListener('input', () => {
+      state.query = searchInput.value.trim().toLowerCase();
+      state.selectedNames.clear();
+      state.lastClickedName = null;
+      renderList();
+      renderDetail();
+    });
+
+    function goHome() {
+      if (state.loading) return;
+      if (state.cwd.length === 0) return;
+      state.cwd = [];
+      state.selectedNames.clear();
+      state.lastClickedName = null;
+      state.query = '';
+      searchInput.value = '';
+      loadDir();
+    }
+    brandHome.addEventListener('click', goHome);
+
+    document.addEventListener('keydown', (e) => {
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (promptModal.hidden === false) return;
+
+      if (e.key === '~' || e.key === '`') {
+        e.preventDefault();
+        goHome();
+      } else if (e.key === '/') {
+        e.preventDefault();
+        searchInput.focus();
+      } else if (e.key === 'Escape') {
+        if (state.selectedNames.size > 0) {
+          state.selectedNames.clear();
+          state.lastClickedName = null;
+          renderList();
+          renderDetail();
+        }
+      }
+    });
+
+    /* =========================================================
+     * 17. 启动
+     * ========================================================= */
+    loadDir();
+  })();
+</script>
+</body>
+</html>
