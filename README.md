@@ -212,4 +212,4 @@ streambox/
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=qwqzy/streambox&type=Date)](https://star-history.com/#qwqzy/streambox&Date)
+[![Star History Chart](https://api.star-history.com/chart?repos=qwqzy/streambox&type=date&legend=bottom-right)](https://www.star-history.com/?repos=qwqzy%2Fstreambox&type=date&legend=bottom-right)
