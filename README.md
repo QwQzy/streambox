@@ -1,10 +1,13 @@
+# StreamBox
+
 ![Go Version](https://img.shields.io/github/go-mod/go-version/qwqzy/streambox)
 ![License](https://img.shields.io/github/license/qwqzy/streambox)
 ![Release](https://img.shields.io/github/v/release/qwqzy/streambox)
 ![Last Commit](https://img.shields.io/github/last-commit/qwqzy/streambox)
 
-# StreamBox
 个人用的流媒体文件服务器。一个 Go 二进制 + 一个 HTML 页面，通过 `go:embed` 打包在一起，丢到机器上就能跑。
+
+![首页截图](docs/screenshot.png)
 
 ## 功能
 
@@ -37,7 +40,7 @@ go install github.com/qwqzy/streambox@latest
 指定版本：
 
 ```bash
-go install github.com/qwqzy/streambox@v0.1.0
+go install github.com/qwqzy/streambox@v1.0.0
 ```
 
 ### 方式三：从源码编译
@@ -81,6 +84,11 @@ streambox/
 │   └── index.html    # 单文件前端（HTML + CSS + JS）
 ├── data/             # 默认的存储根目录（运行时写入，不嵌入）
 │   └── .gitkeep
+├── .github/
+│   └── workflows/
+│       └── release.yml  # 打 tag 自动构建多平台二进制
+├── docs/
+│   └── screenshot.png
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -199,3 +207,9 @@ streambox/
 ## License
 
 [MIT](LICENSE)
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=qwqzy/streambox&type=Date)](https://star-history.com/#qwqzy/streambox&Date)
