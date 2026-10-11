@@ -1,5 +1,9 @@
-# StreamBox
+![Go Version](https://img.shields.io/github/go-mod/go-version/qwqzy/streambox)
+![License](https://img.shields.io/github/license/qwqzy/streambox)
+![Release](https://img.shields.io/github/v/release/qwqzy/streambox)
+![Last Commit](https://img.shields.io/github/last-commit/qwqzy/streambox)
 
+# StreamBox
 个人用的流媒体文件服务器。一个 Go 二进制 + 一个 HTML 页面，通过 `go:embed` 打包在一起，丢到机器上就能跑。
 
 ## 功能
@@ -14,13 +18,40 @@
 - **多选**：Ctrl/Cmd 切换，Shift 范围选择，支持批量下载
 - **搜索过滤**：当前目录内按名字实时过滤
 
+## 安装
+
+### 方式一：下载二进制（推荐）
+
+去 [Releases](https://github.com/qwqzy/streambox/releases) 页面下载对应平台的压缩包，解压后直接运行。不用装 Go，不用编译。
+
+### 方式二：Go 安装
+
+装了 Go 1.25+ 的话，一行搞定：
+
+```bash
+go install github.com/qwqzy/streambox@latest
+```
+
+二进制会装到 `$GOPATH/bin`（通常是 `~/go/bin`）。确保这个目录在 `$PATH` 里，然后就能直接运行 `streambox`。
+
+指定版本：
+
+```bash
+go install github.com/qwqzy/streambox@v0.1.0
+```
+
+### 方式三：从源码编译
+
+```bash
+git clone https://github.com/qwqzy/streambox
+cd streambox
+go build -ldflags="-s -w" -o streambox
+```
+
 ## 快速开始
 
 ```bash
-# 编译
-go build -o streambox
-
-# 启动（默认监听 127.0.0.1:8080，root 为 ./data）
+# 默认监听 127.0.0.1:8080，root 为 ./data
 ./streambox
 
 # 自定义
@@ -51,6 +82,7 @@ streambox/
 ├── data/             # 默认的存储根目录（运行时写入，不嵌入）
 │   └── .gitkeep
 ├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
