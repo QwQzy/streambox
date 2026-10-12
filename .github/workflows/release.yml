@@ -24,7 +24,8 @@ jobs:
           for p in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
             os=${p%/*}; arch=${p#*/}
             ext=""; [ "$os" = "windows" ] && ext=".exe"
-            GOOS=$os GOARCH=$arch go build -ldflags="-s -w" \
+            echo "Building $os/$arch with CGO disabled..."
+            GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -ldflags="-s -w" \
               -o dist/streambox-$os-$arch$ext
           done
 
